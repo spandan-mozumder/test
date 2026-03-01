@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProductById, clearCurrentProduct } from "@/store/productSlice";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { ShoppingCart01, ArrowLeft, Package, Clock } from "@untitledui/icons";
 import toast from "react-hot-toast";
+import { animate, stagger, createTimeline } from "animejs";
 
 export const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export const ProductDetailPage = () => {
   const { currentProduct: product, loading } = useAppSelector(
     (state) => state.products
   );
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -25,6 +27,26 @@ export const ProductDetailPage = () => {
       dispatch(clearCurrentProduct());
     };
   }, [id, dispatch]);
+
+  useEffect(() => {
+    if (!contentRef.current || !product) return;
+    const tl = createTimeline({ defaults: { ease: "outExpo" } });
+
+    tl.add(contentRef.current.querySelectorAll(".detail-image"), {
+      opacity: [0, 1],
+      scale: [0.95, 1],
+      duration: 800,
+    }).add(
+      contentRef.current.querySelectorAll(".detail-info"),
+      {
+        opacity: [0, 1],
+        translateX: [40, 0],
+        delay: stagger(80),
+        duration: 700,
+      },
+      "-=500"
+    );
+  }, [product]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -73,8 +95,7 @@ export const ProductDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {}
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" ref={contentRef}>
       <Button
         color="link-gray"
         size="sm"
@@ -86,25 +107,29 @@ export const ProductDetailPage = () => {
       </Button>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {}
-        <div className="overflow-hidden rounded-2xl border border-secondary bg-secondary">
+        <div
+          className="detail-image overflow-hidden rounded-2xl border border-secondary bg-secondary"
+          style={{ opacity: 0 }}
+        >
           {product.image ? (
             <img
               src={product.image}
               alt={product.title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
               style={{ minHeight: "400px" }}
             />
           ) : (
-            <div className="flex items-center justify-center" style={{ minHeight: "400px" }}>
+            <div
+              className="flex items-center justify-center"
+              style={{ minHeight: "400px" }}
+            >
               <span className="text-8xl">🎵</span>
             </div>
           )}
         </div>
 
-        {}
         <div className="flex flex-col">
-          <div className="mb-4 flex items-center gap-2">
+          <div className="detail-info mb-4 flex items-center gap-2" style={{ opacity: 0 }}>
             <Badge size="md" color="brand" type="pill-color">
               {product.category}
             </Badge>
@@ -120,19 +145,19 @@ export const ProductDetailPage = () => {
             )}
           </div>
 
-          <h1 className="text-display-sm font-semibold text-primary">
+          <h1 className="detail-info text-display-sm font-semibold text-primary" style={{ opacity: 0 }}>
             {product.title}
           </h1>
 
-          <p className="mt-4 text-display-xs font-bold text-brand-tertiary">
+          <p className="detail-info mt-4 text-display-xs font-bold text-brand-tertiary" style={{ opacity: 0 }}>
             ${product.price.toFixed(2)}
           </p>
 
-          <p className="mt-6 text-md leading-relaxed text-secondary">
+          <p className="detail-info mt-6 text-md leading-relaxed text-secondary" style={{ opacity: 0 }}>
             {product.description}
           </p>
 
-          <div className="mt-6 flex items-center gap-4 text-sm text-tertiary">
+          <div className="detail-info mt-6 flex items-center gap-4 text-sm text-tertiary" style={{ opacity: 0 }}>
             <div className="flex items-center gap-1.5">
               <Package className="size-4" data-icon />
               <span>
@@ -149,18 +174,16 @@ export const ProductDetailPage = () => {
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="detail-info mt-8" style={{ opacity: 0 }}>
             <Button
               color="primary"
               size="xl"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto glow-border"
               iconLeading={ShoppingCart01}
               isDisabled={product.stockQuantity === 0}
               onClick={handleAddToCart}
             >
-              {product.stockQuantity === 0
-                ? "Out of Stock"
-                : "Add to Cart"}
+              {product.stockQuantity === 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
           </div>
         </div>

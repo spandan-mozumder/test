@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchOrderHistory } from "@/store/orderSlice";
 import { Button } from "@/components/base/buttons/button";
@@ -7,6 +7,7 @@ import { LoadingIndicator } from "@/components/application/loading-indicator/loa
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { useNavigate } from "react-router";
 import { ShoppingBag01 } from "@untitledui/icons";
+import { animate, stagger } from "animejs";
 
 const statusColors: Record<string, "success" | "warning" | "error" | "gray"> = {
   paid: "success",
@@ -21,10 +22,27 @@ export const OrderHistoryPage = () => {
   const { orders, loading, pagination } = useAppSelector(
     (state) => state.orders
   );
+  const listRef = useRef<HTMLDivElement>(null);
+  const prevOrderIds = useRef<string>("");
 
   useEffect(() => {
     dispatch(fetchOrderHistory(1));
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!listRef.current || loading || orders.length === 0) return;
+    const currentIds = orders.map((o) => o._id).join(",");
+    if (currentIds === prevOrderIds.current) return;
+    prevOrderIds.current = currentIds;
+
+    animate(listRef.current.querySelectorAll(".order-card"), {
+      opacity: [0, 1],
+      translateY: [30, 0],
+      delay: stagger(100),
+      duration: 700,
+      ease: "outExpo",
+    });
+  }, [orders, loading]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -54,11 +72,12 @@ export const OrderHistoryPage = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4" ref={listRef}>
           {orders.map((order) => (
             <div
               key={order._id}
-              className="rounded-xl border border-secondary bg-primary p-6 shadow-xs"
+              className="order-card card-hover rounded-xl border border-secondary bg-primary p-6 shadow-xs"
+              style={{ opacity: 0 }}
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -134,7 +153,6 @@ export const OrderHistoryPage = () => {
             </div>
           ))}
 
-          {}
           {pagination && pagination.totalPages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-2">
               <Button

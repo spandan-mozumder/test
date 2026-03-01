@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProducts, setFilters } from "@/store/productSlice";
@@ -8,8 +8,9 @@ import { Input } from "@/components/base/input/input";
 import { Badge } from "@/components/base/badges/badges";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { SearchMd, ShoppingCart01, ArrowUp, ArrowDown } from "@untitledui/icons";
+import { SearchMd, ShoppingCart01 } from "@untitledui/icons";
 import toast from "react-hot-toast";
+import { animate, stagger } from "animejs";
 
 const categories = [
   { id: "", label: "All Categories" },
@@ -47,6 +48,9 @@ export const ProductListPage = () => {
   );
   const [searchInput, setSearchInput] = useState(filters.search);
   const debouncedSearch = useDebounce(searchInput, 400);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const prevProductIds = useRef<string>("");
 
   useEffect(() => {
     dispatch(
@@ -58,11 +62,46 @@ export const ProductListPage = () => {
         order: filters.order,
       })
     );
-  }, [dispatch, filters.page, debouncedSearch, filters.category, filters.sortBy, filters.order]);
+  }, [
+    dispatch,
+    filters.page,
+    debouncedSearch,
+    filters.category,
+    filters.sortBy,
+    filters.order,
+  ]);
 
   useEffect(() => {
     dispatch(setFilters({ search: debouncedSearch, page: 1 }));
   }, [debouncedSearch, dispatch]);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    animate(headerRef.current.querySelectorAll(".header-el"), {
+      opacity: [0, 1],
+      translateY: [20, 0],
+      delay: stagger(60),
+      duration: 600,
+      ease: "outExpo",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!gridRef.current || loading || products.length === 0) return;
+    const currentIds = products.map((p) => p._id).join(",");
+    if (currentIds === prevProductIds.current) return;
+    prevProductIds.current = currentIds;
+
+    const cards = gridRef.current.querySelectorAll(".product-card");
+    animate(cards, {
+      opacity: [0, 1],
+      translateY: [30, 0],
+      scale: [0.95, 1],
+      delay: stagger(50),
+      duration: 600,
+      ease: "outExpo",
+    });
+  }, [products, loading]);
 
   const handleCategoryChange = (value: string) => {
     dispatch(setFilters({ category: value, page: 1 }));
@@ -98,17 +137,15 @@ export const ProductListPage = () => {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {}
-      <div className="mb-8">
-        <h1 className="text-display-sm font-semibold text-primary">
+      <div className="mb-8" ref={headerRef}>
+        <h1 className="header-el text-display-sm font-semibold text-primary" style={{ opacity: 0 }}>
           Products
         </h1>
-        <p className="mt-1 text-md text-tertiary">
+        <p className="header-el mt-1 text-md text-tertiary" style={{ opacity: 0 }}>
           Browse our collection of premium music records and gear
         </p>
       </div>
 
-      {}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end">
         <div className="flex-1">
           <Input
@@ -145,7 +182,6 @@ export const ProductListPage = () => {
         </div>
       </div>
 
-      {}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <LoadingIndicator size="lg" />
@@ -157,11 +193,15 @@ export const ProductListPage = () => {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            ref={gridRef}
+          >
             {products.map((product) => (
               <div
                 key={product._id}
-                className="group cursor-pointer overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs transition-all duration-200 hover:shadow-lg hover:border-brand"
+                className="product-card card-hover group cursor-pointer overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs"
+                style={{ opacity: 0 }}
               >
                 <div
                   className="relative aspect-square overflow-hidden bg-secondary"
@@ -171,7 +211,7 @@ export const ProductListPage = () => {
                     <img
                       src={product.image}
                       alt={product.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-quaternary">
@@ -179,7 +219,7 @@ export const ProductListPage = () => {
                     </div>
                   )}
                   {product.stockQuantity === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                       <Badge size="md" color="error" type="pill-color">
                         Out of Stock
                       </Badge>
@@ -204,7 +244,7 @@ export const ProductListPage = () => {
                     </span>
                   </div>
                   <h3
-                    className="mb-1 line-clamp-1 text-md font-semibold text-primary cursor-pointer hover:text-brand-secondary"
+                    className="mb-1 line-clamp-1 text-md font-semibold text-primary cursor-pointer hover:text-brand-secondary transition-colors"
                     onClick={() => navigate(`/products/${product._id}`)}
                   >
                     {product.title}
@@ -229,7 +269,6 @@ export const ProductListPage = () => {
             ))}
           </div>
 
-          {}
           {pagination && pagination.totalPages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-2">
               <Button

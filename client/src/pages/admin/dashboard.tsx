@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useRef, type FormEvent } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAnalytics, fetchAllOrders } from "@/store/adminSlice";
 import {
@@ -11,7 +11,6 @@ import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { Badge } from "@/components/base/badges/badges";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/application/modals/modal";
 import {
   BarChartSquare02,
   CurrencyDollar,
@@ -23,6 +22,7 @@ import {
   AlertTriangle,
 } from "@untitledui/icons";
 import toast from "react-hot-toast";
+import { animate, stagger } from "animejs";
 
 const categories = [
   "vinyl",
@@ -55,10 +55,12 @@ export const AdminDashboard = () => {
     title: "",
     description: "",
     price: "",
-    category: "electronics",
+    category: "vinyl",
     stockQuantity: "",
     image: "",
   });
+  const statsRef = useRef<HTMLDivElement>(null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     dispatch(fetchAnalytics());
@@ -66,12 +68,54 @@ export const AdminDashboard = () => {
     dispatch(fetchAllOrders({ page: 1 }));
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!statsRef.current || !analytics) return;
+    const cards = statsRef.current.querySelectorAll(".stat-card");
+    animate(cards, {
+      opacity: [0, 1],
+      translateY: [30, 0],
+      scale: [0.95, 1],
+      delay: stagger(100),
+      duration: 700,
+      ease: "outExpo",
+    });
+
+    // Animate stat numbers
+    const statValues = statsRef.current.querySelectorAll(".stat-value");
+    statValues.forEach((el) => {
+      const target = parseFloat(el.getAttribute("data-value") || "0");
+      const isPrice = el.getAttribute("data-price") === "true";
+      if (isNaN(target)) return;
+      const obj = { value: 0 };
+      animate(obj, {
+        value: target,
+        duration: 1500,
+        ease: "outExpo",
+        onUpdate: () => {
+          (el as HTMLElement).textContent = isPrice
+            ? `$${obj.value.toFixed(2)}`
+            : Math.round(obj.value).toString();
+        },
+      });
+    });
+  }, [analytics]);
+
+  useEffect(() => {
+    if (!tabContentRef.current) return;
+    animate(tabContentRef.current, {
+      opacity: [0, 1],
+      translateY: [15, 0],
+      duration: 400,
+      ease: "outExpo",
+    });
+  }, [activeTab]);
+
   const resetForm = () => {
     setProductForm({
       title: "",
       description: "",
       price: "",
-      category: "electronics",
+      category: "vinyl",
       stockQuantity: "",
       image: "",
     });
@@ -168,19 +212,19 @@ export const AdminDashboard = () => {
             size="md"
             iconLeading={Plus}
             onClick={handleOpenCreate}
+            className="glow-border"
           >
             Add Product
           </Button>
         </div>
 
-        {}
         <div className="mb-8 flex gap-1 rounded-lg border border-secondary bg-secondary p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.id
-                ? "bg-primary text-primary shadow-xs"
-                : "text-tertiary hover:text-secondary"
+              className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 cursor-pointer ${activeTab === tab.id
+                  ? "bg-primary text-primary shadow-xs"
+                  : "text-tertiary hover:text-secondary"
                 }`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -195,41 +239,49 @@ export const AdminDashboard = () => {
             <LoadingIndicator size="lg" />
           </div>
         ) : (
-          <>
-            {}
+          <div ref={tabContentRef} key={activeTab}>
             {activeTab === "overview" && analytics && (
               <div>
-                {}
-                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
+                <div
+                  className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                  ref={statsRef}
+                >
+                  <div className="stat-card card-hover rounded-xl border border-secondary bg-primary p-6 shadow-xs" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-primary">
                         <CurrencyDollar className="size-5 text-brand-600" />
                       </div>
                       <div>
                         <p className="text-sm text-tertiary">Total Revenue</p>
-                        <p className="text-display-xs font-semibold text-primary">
-                          ${analytics.overview.totalRevenue.toFixed(2)}
+                        <p
+                          className="stat-value text-display-xs font-semibold text-primary"
+                          data-value={analytics.overview.totalRevenue}
+                          data-price="true"
+                        >
+                          $0.00
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
+                  <div className="stat-card card-hover rounded-xl border border-secondary bg-primary p-6 shadow-xs" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success-primary">
                         <ShoppingBag01 className="size-5 text-success-600" />
                       </div>
                       <div>
                         <p className="text-sm text-tertiary">Total Sales</p>
-                        <p className="text-display-xs font-semibold text-primary">
-                          {analytics.overview.totalSales}
+                        <p
+                          className="stat-value text-display-xs font-semibold text-primary"
+                          data-value={analytics.overview.totalSales}
+                        >
+                          0
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
+                  <div className="stat-card card-hover rounded-xl border border-secondary bg-primary p-6 shadow-xs" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-primary">
                         <BarChartSquare02 className="size-5 text-warning-600" />
@@ -238,14 +290,18 @@ export const AdminDashboard = () => {
                         <p className="text-sm text-tertiary">
                           Avg Order Value
                         </p>
-                        <p className="text-display-xs font-semibold text-primary">
-                          ${analytics.overview.avgOrderValue.toFixed(2)}
+                        <p
+                          className="stat-value text-display-xs font-semibold text-primary"
+                          data-value={analytics.overview.avgOrderValue}
+                          data-price="true"
+                        >
+                          $0.00
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
+                  <div className="stat-card card-hover rounded-xl border border-secondary bg-primary p-6 shadow-xs" style={{ opacity: 0 }}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
                         <Package className="size-5 text-gray-600" />
@@ -254,15 +310,17 @@ export const AdminDashboard = () => {
                         <p className="text-sm text-tertiary">
                           Total Products
                         </p>
-                        <p className="text-display-xs font-semibold text-primary">
-                          {analytics.overview.totalProducts}
+                        <p
+                          className="stat-value text-display-xs font-semibold text-primary"
+                          data-value={analytics.overview.totalProducts}
+                        >
+                          0
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {}
                 {analytics.salesByCategory.length > 0 && (
                   <div className="mb-8 rounded-xl border border-secondary bg-primary p-6 shadow-xs">
                     <h3 className="mb-4 text-lg font-semibold text-primary">
@@ -295,7 +353,6 @@ export const AdminDashboard = () => {
                   </div>
                 )}
 
-                {}
                 {analytics.lowStockProducts.length > 0 && (
                   <div className="mb-8 rounded-xl border border-warning bg-warning-primary p-6">
                     <div className="mb-4 flex items-center gap-2">
@@ -332,7 +389,6 @@ export const AdminDashboard = () => {
                   </div>
                 )}
 
-                {}
                 {analytics.recentOrders.length > 0 && (
                   <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
                     <h3 className="mb-4 text-lg font-semibold text-primary">
@@ -389,7 +445,6 @@ export const AdminDashboard = () => {
                   </div>
                 )}
 
-                {}
                 {analytics.dailySales.length > 0 && (
                   <div className="mt-8 rounded-xl border border-secondary bg-primary p-6 shadow-xs">
                     <h3 className="mb-4 text-lg font-semibold text-primary">
@@ -424,7 +479,6 @@ export const AdminDashboard = () => {
               </div>
             )}
 
-            {}
             {activeTab === "products" && (
               <div>
                 <div className="overflow-x-auto rounded-xl border border-secondary bg-primary shadow-xs">
@@ -442,7 +496,7 @@ export const AdminDashboard = () => {
                       {products.map((product) => (
                         <tr
                           key={product._id}
-                          className="border-b border-secondary last:border-0"
+                          className="border-b border-secondary last:border-0 transition-colors hover:bg-secondary/50"
                         >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -520,7 +574,6 @@ export const AdminDashboard = () => {
               </div>
             )}
 
-            {}
             {activeTab === "orders" && (
               <div className="overflow-x-auto rounded-xl border border-secondary bg-primary shadow-xs">
                 <table className="w-full">
@@ -538,7 +591,7 @@ export const AdminDashboard = () => {
                     {allOrders.map((order: any) => (
                       <tr
                         key={order._id}
-                        className="border-b border-secondary last:border-0"
+                        className="border-b border-secondary last:border-0 transition-colors hover:bg-secondary/50"
                       >
                         <td className="px-4 py-3 text-sm font-medium text-primary">
                           #{order._id.slice(-8).toUpperCase()}
@@ -616,13 +669,12 @@ export const AdminDashboard = () => {
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
-      {}
       {showProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-secondary bg-primary shadow-xl">
             <div className="border-b border-secondary p-6">
               <h2 className="text-lg font-semibold text-primary">

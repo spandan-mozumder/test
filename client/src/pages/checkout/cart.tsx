@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { removeFromCart, updateQuantity, clearCart } from "@/store/cartSlice";
@@ -6,6 +7,7 @@ import { Button } from "@/components/base/buttons/button";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Trash01, Plus, Minus, ShoppingCart01, ArrowLeft } from "@untitledui/icons";
 import toast from "react-hot-toast";
+import { animate, stagger } from "animejs";
 
 export const CartPage = () => {
   const dispatch = useAppDispatch();
@@ -15,6 +17,18 @@ export const CartPage = () => {
   );
   const { user } = useAppSelector((state) => state.auth);
   const { checkoutLoading } = useAppSelector((state) => state.orders);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!listRef.current || items.length === 0) return;
+    animate(listRef.current.querySelectorAll(".cart-item"), {
+      opacity: [0, 1],
+      translateX: [-30, 0],
+      delay: stagger(80),
+      duration: 600,
+      ease: "outExpo",
+    });
+  }, []);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -77,13 +91,13 @@ export const CartPage = () => {
         </h1>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2" ref={listRef}>
             <div className="space-y-4">
               {items.map((item) => (
                 <div
                   key={item.productId}
-                  className="flex gap-4 rounded-xl border border-secondary bg-primary p-4 shadow-xs"
+                  className="cart-item card-hover flex gap-4 rounded-xl border border-secondary bg-primary p-4 shadow-xs"
+                  style={{ opacity: 0 }}
                 >
                   <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-secondary">
                     {item.image ? (
@@ -164,9 +178,8 @@ export const CartPage = () => {
             </div>
           </div>
 
-          {}
           <div className="lg:col-span-1">
-            <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs">
+            <div className="rounded-xl border border-secondary bg-primary p-6 shadow-xs glow-border">
               <h2 className="text-lg font-semibold text-primary">
                 Order Summary
               </h2>
